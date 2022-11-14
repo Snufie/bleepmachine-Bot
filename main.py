@@ -1,12 +1,9 @@
-# This example requires the 'members' privileged intents
-
 import nextcord
 from nextcord import Interaction, Member
 from nextcord.application_command import SlashOption
 from nextcord.ext import commands
 from dotenv import load_dotenv
 import os
-from typing import List
 
 # Variables
 
@@ -27,17 +24,16 @@ mark_choices = [
     "Natuurkunde",
 ]
 
-# Code
-
-load_dotenv()
-
 intents = nextcord.Intents.default()
 intents.members = True
 intents.message_content = True
 
-GUILD_IDS = os.getenv("GUILD_IDS")
-
+GUILD_IDS = (1039988764925251614,)
 bot = commands.Bot(command_prefix="|", intents=intents)
+
+# Code
+
+load_dotenv()
 
 
 @bot.event
@@ -53,12 +49,12 @@ async def on_member_join(member: Member):
         print('No channel named "welcome" found')
         return
 
-    await welcome_channel.send(f"Welcome to {guild.name} {member.mention}!")
+    await welcome_channel.send(f"Welkom in {guild.name} {member.mention}!")
 
 
 @bot.command(aliases=["pong"])
 async def ping(ctx):
-    await ctx.reply(f"Pong!\nLatency: {round(bot.latency * 1000)}ms")
+    await ctx.reply(f"Pong!\nLatentie: {round(bot.latency * 1000)}ms")
 
 
 @bot.command()
@@ -69,15 +65,19 @@ async def deez(ctx):
 @bot.slash_command(guild_ids=GUILD_IDS)
 async def mark(
     interaction: Interaction,
-    mark: float = SlashOption(required=True, description="Your mark"),
+    mark: float = SlashOption(
+        required=True, min_value=1.0, max_value=10.0, description="Jouw cijfer"
+    ),
     subject=SlashOption(
         required=True,
         choices=mark_choices,
-        description="The subject",
+        description="Het vak",
     ),
 ):
-    """Enter your mark"""
-    await interaction.response.send_message(f"Y {mark} for {subject}")
+    """Voer je punt in"""
+    await interaction.response.send_message(
+        f"{interaction.user.mention} heeft een {mark} gehaald voor {subject}!"
+    )
 
 
 @bot.slash_command(guild_ids=GUILD_IDS)
