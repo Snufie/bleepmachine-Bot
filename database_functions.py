@@ -61,7 +61,7 @@ def add_punt(user_id: int, punt: float, vak: str, *, special_event: str = "N/A")
 
 
 # Test
-add_punt(user_id, 6.9, "WisB")
+# add_punt(user_id, 6.9, "WisB")
 
 
 def edit_punt(user_id: int, punt_id: str, new_punt: float, new_vak: str):
