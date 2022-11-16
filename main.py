@@ -4,6 +4,7 @@ from nextcord.application_command import SlashOption
 from nextcord.ext import commands
 from dotenv import load_dotenv
 import os
+from pymongo import MongoClient
 
 # Variables
 
@@ -22,6 +23,8 @@ mark_choices = [
     "Aardrijkskunde",
     "Scheikunde",
     "Natuurkunde",
+    "CKV",
+    "Maatschappijleer",
 ]
 
 intents = nextcord.Intents.default()
@@ -32,8 +35,18 @@ GUILD_IDS = (1039988764925251614,)
 bot = commands.Bot(command_prefix="|", intents=intents)
 
 # Code
-
 load_dotenv()
+
+# client = MongoClient(os.getenv("MONGO_URL"))
+# db = client.test
+# people = db.people
+# testDocument = {
+#    "test": "balls",
+#    "test2": "bigger balls",
+#    "Bigger": "Huge ballingus",
+#    "5": 564,
+# }
+# people.insert_one(testDocument)
 
 
 @bot.event
@@ -75,6 +88,8 @@ async def mark(
     ),
 ):
     """Voer je punt in"""
+    print("beans")
+
     await interaction.response.send_message(
         f"{interaction.user.mention} heeft een {mark} gehaald voor {subject}!"
     )

@@ -1,13 +1,19 @@
-from pymongo import MongoClient
 from pymongo.database import Database
 from dotenv import load_dotenv
+from dotenv import dotenv_values
 import os
+from pymongo.mongo_client import MongoClient
+from pymongo.server_api import ServerApi
 
 load_dotenv()
 
-user_id = 123456789
+user_id = 85968548
 
-DB: MongoClient = MongoClient(os.getenv("MONGO_URL"))
+client = MongoClient(
+    os.getenv("MONGO_URL"), server_api=ServerApi("1"), serverSelectionTimeoutMS=5000
+)
+
+print(client.list_database)
 
 RQ_COLLECTIONS = ["punten", "boontjes"]
 
@@ -24,10 +30,10 @@ def add_user_db(user_id: int) -> Database:
     """
 
     # Check if a database for the user already exists, if so, return it
-    if str(user_id) in DB.list_database_names():
-        return DB.get_database(str(user_id))
+    if str(user_id) in client.list_database_names():
+        return client.get_database(str(user_id))
 
-    new_database = DB[str(user_id)]
+    new_database = client[str(user_id)]
 
     # Add every required collection to the database
     for collection in RQ_COLLECTIONS:
@@ -47,10 +53,10 @@ def add_punt(user_id: int, punt: float, vak: str, *, special_event: str = "N/A")
         # Mark is invalid
         return False
 
-    if not str(user_id) in DB.list_database_names():
+    if not str(user_id) in client.list_database_names():
         user_db = add_user_db(user_id)
     else:
-        user_db = DB.get_database(str(user_id))
+        user_db = client.get_database(str(user_id))
 
     pt_coll = user_db.get_collection("punten")
     document = pt_coll.insert_one(
@@ -73,6 +79,6 @@ def remove_punt(user_id: int, punt_id: str):
     pass
 
 
-def clear_punt_db(user_id: int, punt: float, vak: str):
+def clear_punt_client(user_id: int):
     # NOTE: Admin only, with "are you sure" question
     pass
