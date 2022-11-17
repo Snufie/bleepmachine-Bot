@@ -5,6 +5,7 @@ from nextcord.ext import commands
 from dotenv import load_dotenv
 import os
 from pymongo import MongoClient
+import database_functions
 
 # Variables
 
@@ -26,6 +27,16 @@ mark_choices = [
     "CKV",
     "Maatschappijleer",
 ]
+
+mark_se_choices = {
+    "Punt uit toetsweek": "TW{tw_num}",
+    "Praktische Opdracht": "PO",
+    "Examen": "exam",
+    "Tentamen": "tent",
+    "Proefwerk": "PW",
+    "Mondelinge Overhoring": "MO",
+    "Schriftelijke Overhoring": "SO",
+}
 
 intents = nextcord.Intents.default()
 intents.members = True
@@ -86,19 +97,56 @@ async def mark(
         choices=mark_choices,
         description="Het vak",
     ),
+    type=SlashOption(required=False, choices=mark_se_choices, description="Type punt"),
 ):
     """Voer je punt in"""
-    print("beans")
-
+    database_functions.add_punt(
+        user_id=int(interaction.user.id),
+        punt=mark,
+        vak=subject,
+        type=mark_se_choices.get(type),
+    )
     await interaction.response.send_message(
         f"{interaction.user.mention} heeft een {mark} gehaald voor {subject}!"
     )
 
 
 @bot.slash_command(guild_ids=GUILD_IDS)
-async def slash(interaction: Interaction):
-    """Epic"""
-    await interaction.response.send_message("Slash Command!")
+async def average(
+    interaction: Interaction,
+    subject: str = SlashOption(
+        choices=mark_choices,
+        description="Het vak waar je het gemmiddelde van wilt, leeg geeft het gemiddelde van alles",
+        required=True,
+    ),
+):
+    avgvalue = database_functions.get_avg(user_id=interaction.user.id, vak=subject)
+    print(avgvalue)
+    if avgvalue == None:
+        await interaction.response.send_message(
+            f"Je hebt nog geen punt voor {subject}",
+            ephemeral=True,
+        )
+    else:
+        await interaction.response.send_message(
+            f"{interaction.user.mention}. Je staat een {avgvalue} gemiddeld voor {subject}"
+        )
+
+
+@bot.slash_command(guild_ids=GUILD_IDS)
+async def showmark(
+    interaction: Interaction,
+    all: bool = SlashOption(
+        description="Wil je alle cijfers laten zien?",
+        required=True,
+    ),
+    subject: str = SlashOption(
+        choices=mark_choices,
+        description="Voor welk vak je je punten wil zien",
+        required=False,
+    ),
+):
+    pass
 
 
 if __name__ == "__main__":
