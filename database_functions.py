@@ -9,7 +9,7 @@ from pymongo.errors import ConnectionFailure
 
 load_dotenv()
 
-# user_id = interaction.user.id
+user_id = 706884739495231550
 try:
     client = MongoClient(os.getenv("MONGO_URL"))
 except ConnectionFailure:
@@ -87,13 +87,17 @@ def showmark(user_id: int, vak: str = None, all: bool = False):
     db = client.get_database(str(user_id))
     col = db.get_collection("punten")
     qry = col.find({"vak": vak})
-    qry2 = qry(doc["punt"] for doc in qry)
     if all == True:
-        qry = col.find("punt")
+        qry = tuple(col.find())
+        result = {}
+        for doc in qry:
+            result.setdefault(doc["vak"], []).append(doc["punt"])
+        return result
+    return tuple(doc["punt"] for doc in qry)
 
 
 # Test
-# print(get_mark(user_id, avg=True, vak="WiskundeB"))
+# print(showmark(user_id, all=True))
 
 
 def edit_punt(user_id: int, punt_id: str, new_punt: float, new_vak: str):
