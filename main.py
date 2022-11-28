@@ -6,8 +6,12 @@ from dotenv import load_dotenv
 import os
 from pymongo import MongoClient
 import database_functions
+import moderation
+
 
 # Variables
+
+userinfracs = {}
 
 mark_choices = [
     "Wiskunde A",
@@ -38,9 +42,15 @@ mark_se_choices = {
     "Schriftelijke Overhoring": "SO",
 }
 
+bad_words = ("kkr", "kanker", "kk", "nigger", "neger", "nigr", "negr", "nigga", "nig")
+welcomechannels = ["welcome", "welkom", "entrance", "ingang", "joins"]
+# discuser = list(nextcord.Guild.members)
+# print(discuser)
+
 intents = nextcord.Intents.default()
 intents.members = True
 intents.message_content = True
+intents.messages = True
 
 GUILD_IDS = (1039988764925251614,)
 bot = commands.Bot(command_prefix="|", intents=intents)
@@ -68,12 +78,34 @@ async def on_ready():
 @bot.event
 async def on_member_join(member: Member):
     guild = member.guild
-    welcome_channel = nextcord.utils.get(guild.channels, name="welcome")
+    welcome_channel = nextcord.utils.get(guild.channels, name=welcomechannels)
     if welcome_channel is None:
         print('No channel named "welcome" found')
         return
 
     await welcome_channel.send(f"Welkom in {guild.name} {member.mention}!")
+
+
+@bot.listen("on_message")
+async def badwords(message: nextcord.Message):
+    message.content.lower()
+    if message.author == bot.user:
+        return
+
+    if any(bad_word in message.content for bad_word in bad_words):
+        infrac = "Ongeoorloofd taalgebruik"
+        moderation.badwords(message=message, infrac=infrac, author_id=message.author.id)
+
+
+@bot.slash_command(guild_ids=GUILD_IDS)
+async def clearinfracs(
+    interaction: Interaction,
+    user: nextcord.Member = SlashOption(
+        required=True,
+        description="The user to remove the infractions from",
+    ),
+):
+    moderation.clearinfracs(user=user, interaction=interaction)
 
 
 @bot.command(aliases=["pong"])
@@ -90,14 +122,18 @@ async def deez(ctx):
 async def mark(
     interaction: Interaction,
     mark: float = SlashOption(
-        required=True, min_value=1.0, max_value=10.0, description="Jouw cijfer"
+        required=True,
+        min_value=1.0,
+        max_value=10.0,
+        description="Jouw cijfer",
+        name="mark",
     ),
     subject=SlashOption(
-        required=True,
-        choices=mark_choices,
-        description="Het vak",
+        required=True, choices=mark_choices, description="Het vak", name="subject"
     ),
-    type=SlashOption(required=False, choices=mark_se_choices, description="Type punt"),
+    type=SlashOption(
+        required=False, choices=mark_se_choices, description="Type punt", name="type"
+    ),
 ):
     """Voer je punt in"""
     database_functions.add_punt(
@@ -118,6 +154,7 @@ async def average(
         choices=mark_choices,
         description="Het vak waar je het gemmiddelde van wilt, leeg geeft het gemiddelde van alles",
         required=True,
+        name="subject",
     ),
 ):
     avgvalue = database_functions.get_avg(user_id=interaction.user.id, vak=subject)
@@ -136,14 +173,14 @@ async def average(
 @bot.slash_command(guild_ids=GUILD_IDS)
 async def showmark(
     interaction: Interaction,
-    all: bool = SlashOption(
-        description="Wil je alle cijfers laten zien?",
-        required=True,
+    allmarks: bool = SlashOption(
+        description="Wil je alle cijfers laten zien?", required=True, name="allmarks"
     ),
     subject: str = SlashOption(
         choices=mark_choices,
         description="Voor welk vak je je punten wil zien",
         required=False,
+        name="subject",
     ),
 ):
     pass

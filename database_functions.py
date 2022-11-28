@@ -9,15 +9,18 @@ from pymongo.errors import ConnectionFailure
 
 load_dotenv()
 
-user_id = 706884739495231550
+# user_id = 706884739495231550
 try:
     client = MongoClient(os.getenv("MONGO_URL"))
 except ConnectionFailure:
     print("Failed to connect to MongoDB")
     exit()
 
+infrac_types = ["addW", "removeW"]
 
-RQ_COLLECTIONS = ["punten"]
+RQ_COLLECTIONS = ["punten", "overtredingen"]
+
+# Code
 
 
 def add_user_db(user_id: int) -> Database:
@@ -46,6 +49,22 @@ def add_user_db(user_id: int) -> Database:
 
 # Test
 # print(add_user_db(user_id).name)
+
+
+def infractions(user_id, type, infrac, removeall=None):
+    if not str(user_id) in client.list_database_names():
+        user_db = add_user_db(user_id)
+    else:
+        user_db = client.get_database(str(user_id))
+    if type == "addW":
+        straftype = "warning"
+        col = user_db.get_collection("overtredingen")
+        document = col.insert_one({"overtreding": infrac, "straf": straftype})
+        return document.inserted_id
+    elif type == "removeW":
+        straftype = str(any)
+        col = user_db.get_collection("overtredingen")
+        document = col.drop()
 
 
 def add_punt(
