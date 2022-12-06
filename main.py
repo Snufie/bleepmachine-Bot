@@ -5,8 +5,11 @@ from nextcord.ext import commands
 from dotenv import load_dotenv
 import os
 from pymongo import MongoClient
+from pymongo.errors import ConnectionFailure
 import database_functions
 import moderation
+import edu
+import rpg
 
 
 # Variables
@@ -30,6 +33,7 @@ mark_choices = [
     "Natuurkunde",
     "CKV",
     "Maatschappijleer",
+    "Levensbeschouwing",
 ]
 
 mark_se_choices = {
@@ -42,7 +46,8 @@ mark_se_choices = {
     "Schriftelijke Overhoring": "SO",
 }
 
-bad_words = ("kkr", "kanker", "kk", "nigger", "neger", "nigr", "negr", "nigga", "nig")
+bad_words = ("kkr", "kanker", " kk ", "nigger", "neger", "nigr", "negr", "nigga", "nig")
+exceptions_bw = ("kankerpatiënt", "heeft kanker")
 welcomechannels = ["welcome", "welkom", "entrance", "ingang", "joins"]
 # discuser = list(nextcord.Guild.members)
 # print(discuser)
@@ -51,6 +56,12 @@ intents = nextcord.Intents.default()
 intents.members = True
 intents.message_content = True
 intents.messages = True
+
+try:
+    client = MongoClient(os.getenv("MONGO_URL"))
+except ConnectionFailure:
+    print("Failed to connect to MongoDB")
+    exit()
 
 GUILD_IDS = (1039988764925251614,)
 bot = commands.Bot(command_prefix="|", intents=intents)
@@ -88,13 +99,15 @@ async def on_member_join(member: Member):
 
 @bot.listen("on_message")
 async def badwords(message: nextcord.Message):
-    message.content.lower()
     if message.author == bot.user:
         return
-
-    if any(bad_word in message.content for bad_word in bad_words):
+    msg = message.content.strip(" ")
+    print(msg)
+    if any(word in msg for word in bad_words):
         infrac = "Ongeoorloofd taalgebruik"
-        moderation.badwords(message=message, infrac=infrac, author_id=message.author.id)
+        await moderation.badwords(
+            message=message, infrac=infrac, author_id=message.author.id
+        )
 
 
 @bot.slash_command(guild_ids=GUILD_IDS)
@@ -105,7 +118,9 @@ async def clearinfracs(
         description="The user to remove the infractions from",
     ),
 ):
-    moderation.clearinfracs(user=user, interaction=interaction)
+    user1 = user.id
+    print(user1)
+    await moderation.clearinfracs(user=user1, user_name=user, interaction=interaction)
 
 
 @bot.command(aliases=["pong"])
@@ -116,6 +131,33 @@ async def ping(ctx):
 @bot.command()
 async def deez(ctx):
     await ctx.reply("NUTS!!!")
+
+
+@bot.command()
+async def RPG(ctx):
+    # await ctx.reply("E")
+    await rpg.rpg(ctx=ctx, base=rpg.base_coll)
+    await ctx.reply("balls")
+
+
+@bot.command()
+async def RPG_inventory(ctx):
+    await rpg.rpgmain.openinventory(
+        user=rpg.vars.User,
+        user_name=rpg.vars.User_name,
+        user_rpg=rpg.vars.User_rpg,
+        ctx=ctx,
+    )
+
+
+@bot.command()
+async def RPG_map(ctx):
+    await rpg.rpgmain.worldtravel(
+        user=rpg.vars.User,
+        user_name=rpg.vars.User_name,
+        user_rpg=rpg.rpg_db.get_rpg_db(user_id=ctx.author.id),
+        ctx=ctx,
+    )
 
 
 @bot.slash_command(guild_ids=GUILD_IDS)
@@ -135,15 +177,12 @@ async def mark(
         required=False, choices=mark_se_choices, description="Type punt", name="type"
     ),
 ):
-    """Voer je punt in"""
-    database_functions.add_punt(
-        user_id=int(interaction.user.id),
-        punt=mark,
-        vak=subject,
-        type=mark_se_choices.get(type),
-    )
-    await interaction.response.send_message(
-        f"{interaction.user.mention} heeft een {mark} gehaald voor {subject}!"
+    await edu.mark(
+        user=interaction.user.id,
+        mark=mark,
+        type=type,
+        subject=subject,
+        interaction=interaction,
     )
 
 
@@ -157,17 +196,7 @@ async def average(
         name="subject",
     ),
 ):
-    avgvalue = database_functions.get_avg(user_id=interaction.user.id, vak=subject)
-    print(avgvalue)
-    if avgvalue == None:
-        await interaction.response.send_message(
-            f"Je hebt nog geen punt voor {subject}",
-            ephemeral=True,
-        )
-    else:
-        await interaction.response.send_message(
-            f"{interaction.user.mention}. Je staat een {avgvalue} gemiddeld voor {subject}"
-        )
+    await edu.average(interaction=interaction, subject=subject)
 
 
 @bot.slash_command(guild_ids=GUILD_IDS)

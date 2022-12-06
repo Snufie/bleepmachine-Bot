@@ -30,11 +30,11 @@ async def badwords(message, infrac, author_id):
     await message.reply(embed=embedr)
 
 
-async def clearinfracs(user, interaction):
+async def clearinfracs(user, user_name, interaction):
     database_functions.infractions(user_id=user, type="removeW", infrac=all)
     embedr = nextcord.Embed(
         color=nextcord.Color.blurple(),
-        title=f"Alle overtredingen van {user} zijn verwijderd!",
+        title=f"Alle overtredingen van {user_name} zijn verwijderd!",
         description="Tip: je aan de regels houden werkt echt!",
     )
     await interaction.response.send_message(embed=embedr)

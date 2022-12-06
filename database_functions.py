@@ -18,7 +18,7 @@ except ConnectionFailure:
 
 infrac_types = ["addW", "removeW"]
 
-RQ_COLLECTIONS = ["punten", "overtredingen"]
+RQ_COLLECTIONS = ["punten", "overtredingen", "rpg"]
 
 # Code
 
@@ -64,11 +64,14 @@ def infractions(user_id, type, infrac, removeall=None):
     elif type == "removeW":
         straftype = str(any)
         col = user_db.get_collection("overtredingen")
-        document = col.drop()
+        col.delete_many({})
 
 
 def add_punt(
-    user_id: int, punt: float, vak: str, type: str = "", *, special_event: str = "N/A"
+    user_id: int,
+    punt: float,
+    vak: str,
+    type: str,
 ):
     # TODO: Add compatibilty for date
 
@@ -82,9 +85,7 @@ def add_punt(
         user_db = client.get_database(str(user_id))
 
     pt_coll = user_db.get_collection("punten")
-    document = pt_coll.insert_one(
-        {"punt": punt, "vak": vak, "special_event": special_event, "type": type}
-    )
+    document = pt_coll.insert_one({"punt": punt, "vak": vak, "type": type})
 
     return document.inserted_id
 
