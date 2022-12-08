@@ -143,19 +143,14 @@ async def RPG(ctx):
 @bot.command()
 async def RPG_inventory(ctx):
     await rpg.rpgmain.openinventory(
-        user=rpg.vars.User,
-        user_name=rpg.vars.User_name,
-        user_rpg=rpg.vars.User_rpg,
         ctx=ctx,
     )
 
 
 @bot.command()
 async def RPG_map(ctx):
+    print(type(ctx))
     await rpg.rpgmain.worldtravel(
-        user=rpg.vars.User,
-        user_name=rpg.vars.User_name,
-        user_rpg=rpg.rpg_db.get_rpg_db(user_id=ctx.author.id),
         ctx=ctx,
     )
 
