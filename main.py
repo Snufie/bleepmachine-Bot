@@ -133,23 +133,22 @@ async def deez(ctx):
     await ctx.reply("NUTS!!!")
 
 
-@bot.command()
+@bot.group(invoke_without_command=True)
 async def RPG(ctx):
     # await ctx.reply("E")
     await rpg.rpg(ctx=ctx, base=rpg.base_coll)
     await ctx.reply("balls")
 
 
-@bot.command()
-async def RPG_inventory(ctx):
+@RPG.command()
+async def inventory(ctx):
     await rpg.rpgmain.openinventory(
         ctx=ctx,
     )
 
 
-@bot.command()
-async def RPG_map(ctx):
-    print(type(ctx))
+@RPG.command()
+async def map(ctx):
     await rpg.rpgmain.worldtravel(
         ctx=ctx,
     )
