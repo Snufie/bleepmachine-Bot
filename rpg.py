@@ -7,13 +7,6 @@ import os
 from pymongo import MongoClient
 from pymongo.errors import ConnectionFailure
 import database_functions
-import matplotlib.pyplot as plt
-import matplotlib.ticker as plticker
-
-try:
-    from PIL import Image
-except ImportError:
-    pass
 
 # Variables:
 
@@ -42,7 +35,6 @@ base_coll = {
     "melee": "Wooden Sword",
     "ranged": "Slingshot",
     "mount": "Mule",
-    "miles_travelled": 0,
     "current_location": "Newvault",
     "rank": ranks.get("1"),
 }
@@ -66,27 +58,15 @@ except ConnectionFailure:
 # Code:
 
 
-def prepare_map():
-    map = Image.open("map2.png")
-    gridLineWidth = 100
-    fig = plt.figure(
-        figsize=(
-            float(map.size[1]) / gridLineWidth,
-            float(map.size[0]) / gridLineWidth,
-        ),
-        dpi=gridLineWidth,
-    )
-    axes = fig.add_subplot(111)
-    fig.subplots_adjust(left=0, right=1, bottom=0, top=1)
-    gridInterval = 50.0
-    gridIntervalx = 50.0
-    location = plticker.MultipleLocator(base=gridInterval)
-    locationx = plticker.MultipleLocator(base=gridIntervalx)
-    axes.xaxis.set_major_locator(locationx)
-    axes.yaxis.set_major_locator(location)
-    axes.grid(which="both", axis="both", linestyle="-", color="k")
-    axes.imshow(map)
-    fig.savefig("map.png", dpi=gridLineWidth)
+class fasttravel(nextcord.ui.View):
+    def __init__(self):
+        super().__init__()
+        self.value = None
+
+    @nextcord.ui.button(label="Travel to..", style=nextcord.ButtonStyle.grey)
+    async def settraveldest(self, button: nextcord.ui.Button, interaction=Interaction):
+        await rpgmain.setdestination(ctx=interaction)
+        self.value = True
 
 
 async def rpg(ctx, base):
@@ -120,43 +100,19 @@ async def rpg(ctx, base):
 
         await rpgsetup.start(
             self=rpgsetup,
-            userrpg=user_rpg,
-            user=user_id1,
-            user_name=user_name,
             interact=ctx,
         )
 
 
-class vars:
-    Ctx = None
-    User = None
-    User_rpg = None
-    User_name = None
-
-
 class rpgsetup:
-    async def start(self, userrpg, user, user_name, interact) -> None:
-        vars.Ctx = interact
-        vars.User = user
-        vars.User_rpg = userrpg
-        vars.User_name = user_name
-        print(vars.Ctx, vars.User, vars.User_name, vars.User_rpg)
+    async def start(self, interact) -> None:
         user_rpg_db = client.get_database(str(interact.author.id))
         user_rpg_coll = user_rpg_db.get_collection("rpg")
-        if user_rpg_coll.count_documents({}) < 2:
-            user_rpg_coll.insert_one(
-                {"name": "rpg_vars", "user_rpg": vars.User_rpg, "user": vars.User}
-            )
-        elif user_rpg_coll.count_documents({}) == 2:
-            user_rpg_coll.find_one_and_update(
-                {"name": "rpg_vars"},
-                {"$set": {"user_rpg": vars.User_rpg}, "$set": {"user": vars.User}},
-            )
         await rpgmain.intro(
-            user=vars.User,
-            user_name=vars.User_name,
-            user_rpg=vars.User_rpg,
-            ctx=vars.Ctx,
+            user=interact.author.id,
+            user_name=interact.author,
+            user_rpg=user_rpg_coll.find_one({"name": "playerstats"}),
+            ctx=interact,
         )
 
 
@@ -204,7 +160,12 @@ class rpgmain:
             "From now on you can use the RPG commands in this thread! You don't need to use |RPG again unless the thread becomes inactive."
         )
 
-    async def openinventory(user, user_name, user_rpg, ctx):
+    async def openinventory(ctx):
+        user = ctx.author.id
+        user_name = ctx.author
+        user_r = client.get_database(str(user))
+        user_rp = user_r.get_collection("rpg")
+        user_rpg = user_rp.find_one({"name": "playerstats"})
         channel: nextcord.TextChannel = nextcord.utils.get(
             ctx.guild.channels, name="rpg"
         )
@@ -230,22 +191,63 @@ class rpgmain:
         rpg_inv_embed.add_field(
             name="Ranged Weapon:", value=user_rpg.get("ranged"), inline=True
         )
+        rpg_inv_embed.add_field(name="Mount:", value=user_rpg.get("mount"), inline=True)
         await thread.send(embed=rpg_inv_embed)
 
-    async def worldtravel(user, user_name, user_rpg, ctx):
+    async def worldtravel(ctx):
+        user = ctx.author.id
+        user_name = ctx.author
+        user_r = client.get_database(str(user))
+        user_rp = user_r.get_collection("rpg")
+        user_rpg = user_rp.find_one({"name": "playerstats"})
         location = user_rpg.get("current_location")
         channel: nextcord.TextChannel = nextcord.utils.get(
             ctx.guild.channels, name="rpg"
         )
         user_name_thread = str(user_name).replace("#", "")
         thread = nextcord.utils.get(channel.threads, name=f"{user_name_thread}'s RPG")
-        prepare_map()
-        await thread.send(file=nextcord.File("map.png"))
+        view = fasttravel()
+        await thread.send(file=nextcord.File(f"img/map_{location}.png"), view=view)
+        await view.wait()
 
-
-class rpg_db:
-    def get_rpg_db(user_id):
-        user_rpg_db = client.get_database(str(user_id))
-        user_rpg_coll = user_rpg_db.get_collection("rpg")
-        user_rpg_doc = user_rpg_coll.find_one({"name": "playerstats"})
-        return user_rpg_doc
+    async def setdestination(ctx):
+        locations_db = client.get_database("RPG")
+        locations_coll = locations_db.get_collection("locations")
+        rpg_locations = locations_coll.find_one({"_id": "Kingdom of Mospelia"})
+        print(rpg_locations)
+        print(rpg_locations["cities"]["rich"])
+        rpg_citydesc = locations_coll.find_one({"_id": "mospelia_citydesc"})
+        embedr = nextcord.Embed(
+            color=nextcord.Color.brand_green(),
+            title="**Set your travel destination**",
+            description="Check the following destinations and choose yours.",
+        )
+        embedr.add_field(
+            name=rpg_locations["cities"]["capital"],
+            value=rpg_citydesc[(str(rpg_locations["cities"]["capital"]).lower())],
+        )
+        embedr.add_field(
+            name=rpg_locations["cities"]["rich"],
+            value=rpg_citydesc[(str(rpg_locations["cities"]["rich"]).lower())],
+        )
+        embedr.add_field(
+            name=rpg_locations["cities"]["trade_port"],
+            value=rpg_citydesc[(str(rpg_locations["cities"]["trade_port"]).lower())],
+        )
+        embedr.add_field(
+            name=rpg_locations["cities"]["religion"],
+            value=rpg_citydesc[(str(rpg_locations["cities"]["religion"]).lower())],
+        )
+        embedr.add_field(
+            name=rpg_locations["cities"]["generic1"],
+            value=rpg_citydesc[(str(rpg_locations["cities"]["generic1"]).lower())],
+        )
+        embedr.add_field(
+            name=rpg_locations["cities"]["generic2"],
+            value=rpg_citydesc[(str(rpg_locations["cities"]["generic2"]).lower())],
+        )
+        embedr.add_field(
+            name=rpg_locations["cities"]["generic3"],
+            value=rpg_citydesc[(str(rpg_locations["cities"]["generic3"]).lower())],
+        )
+        await ctx.response.send_message(embed=embedr)
